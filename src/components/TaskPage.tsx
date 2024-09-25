@@ -4,6 +4,18 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ref, onValue } from 'firebase/database';
 import { db } from '../firebase';
 import { updateTask, deleteTask } from '../services/taskService';
+import { getGroupsFromTask, addGroupToTask } from '../services/groupService';
+import ThemesSection from './ThemesSection';
+
+interface Theme {
+  title: string;
+  description: string;
+}
+
+interface Group {
+  name: string;
+  members: string[];
+}
 
 interface Task {
   id: string;
@@ -14,6 +26,8 @@ interface Task {
   criteria: string;
   materials: File[];
   todoList: string[];
+  themes: Theme[];
+  groups: Group[];
 }
 
 const TaskPage: React.FC = () => {
@@ -22,7 +36,8 @@ const TaskPage: React.FC = () => {
   const [task, setTask] = useState<Task | null>(null);
   const [editing, setEditing] = useState(false);
   const [newMaterials, setNewMaterials] = useState<File[]>([]);
-  const [newTodoItem, setNewTodoItem] = useState(''); // Estado para novo item da To-Do List
+  const [newTodoItem, setNewTodoItem] = useState('');
+  const [groups, setGroups] = useState<Group[]>([]);
 
   useEffect(() => {
     if (id) {
@@ -39,11 +54,24 @@ const TaskPage: React.FC = () => {
             criteria: taskData.criteria || '',
             materials: taskData.materials || [],
             todoList: taskData.todoList || [],
+            themes: taskData.themes || [],
+            groups: taskData.groups || [],
           });
         }
       });
+
+      // Carrega os grupos da tarefa
+      loadGroups();
     }
   }, [id]);
+
+  // Carrega grupos da tarefa
+  const loadGroups = async () => {
+    if (id) {
+      const loadedGroups = await getGroupsFromTask(id);
+      setGroups(loadedGroups ? Object.values(loadedGroups) : []);
+    }
+  };
 
   const handleMaterialChange = (e: ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -51,13 +79,9 @@ const TaskPage: React.FC = () => {
     }
   };
 
-  const handleEdit = () => {
-    setEditing(true);
-  };
+  const handleEdit = () => setEditing(true);
 
-  const handleCancelEdit = () => {
-    setEditing(false);
-  };
+  const handleCancelEdit = () => setEditing(false);
 
   const handleDelete = async () => {
     if (task && window.confirm('Tem certeza que deseja excluir esta tarefa?')) {
@@ -75,6 +99,8 @@ const TaskPage: React.FC = () => {
         ...task,
         materials: updatedMaterials,
         todoList: task.todoList || [],
+        themes: task.themes || [],
+        groups: groups || [],
       });
       alert('Tarefa atualizada com sucesso!');
       setEditing(false);
@@ -108,21 +134,15 @@ const TaskPage: React.FC = () => {
         <div className="bg-white shadow-md rounded-lg p-6">
           {!editing ? (
             <>
-              <h3 className="text-2xl font-semibold text-[#2E7D32]">{task.title}</h3>
-              <p>
-                <strong>Descrição:</strong> {task.description}
-              </p>
-              <p>
-                <strong>Data de Entrega:</strong> {task.dueDate}
-              </p>
-              <p>
-                <strong>Instruções:</strong> {task.instructions}
-              </p>
-              <p>
-                <strong>Critérios:</strong> {task.criteria}
-              </p>
-              <p>
-                <strong>Materiais:</strong>{' '}
+              <h3 className="text-2xl font-semibold text-[#2E7D32] mb-2">{task.title}</h3>
+              <div className="mb-4">
+                <p className="mb-1"><strong>Descrição:</strong> {task.description}</p>
+                <p className="mb-1"><strong>Data de Entrega:</strong> {task.dueDate}</p>
+                <p className="mb-1"><strong>Instruções:</strong> {task.instructions}</p>
+                <p className="mb-1"><strong>Critérios:</strong> {task.criteria}</p>
+              </div>
+              <div className="mb-4">
+                <strong>Materiais:</strong>
                 {task.materials.length > 0 ? (
                   <ul className="list-disc ml-5">
                     {task.materials.map((material, index) => (
@@ -130,17 +150,37 @@ const TaskPage: React.FC = () => {
                     ))}
                   </ul>
                 ) : (
-                  'Nenhum material anexado.'
+                  <p className="text-gray-600">Nenhum material anexado.</p>
                 )}
-              </p>
-              <p>
+              </div>
+              <div className="mb-4">
                 <strong>To-Do List:</strong>
-              </p>
-              <ul className="list-disc ml-5">
-                {task.todoList.map((item, index) => (
-                  <li key={index}>{item}</li>
-                ))}
-              </ul>
+                <ul className="list-disc ml-5">
+                  {task.todoList.map((item, index) => (
+                    <li key={index}>{item}</li>
+                  ))}
+                </ul>
+              </div>
+
+              {/* Seção de Temas */}
+              <ThemesSection themes={task.themes} taskId={task.id} />
+
+              {/* Seção de Grupos */}
+              <div className="mb-4">
+                <strong>Grupos:</strong>
+                {groups.length > 0 ? (
+                  <ul className="list-disc ml-5">
+                    {groups.map((group, index) => (
+                      <li key={index}>
+                        <strong>{group.name}</strong> - Integrantes: {group.members.join(', ')}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-gray-600">Nenhum grupo cadastrado.</p>
+                )}
+              </div>
+
               <div className="mt-4 flex space-x-2">
                 <button
                   onClick={handleEdit}
