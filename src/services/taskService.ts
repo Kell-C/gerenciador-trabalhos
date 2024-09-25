@@ -1,0 +1,45 @@
+// src/services/taskService.ts
+import { ref, get, push, set, update } from 'firebase/database';
+import { db } from '../firebase';
+
+// Definindo o tipo da tarefa
+interface Task {
+  id?: string;
+  title: string;
+  description: string;
+  dueDate: string;
+  instructions: string;
+  criteria: string;
+  materials?: File[];
+  todolist?: string[];
+}
+
+// Função para criar uma nova tarefa
+export const createTask = async (task: any) => {
+  const taskRef = ref(db, 'tasks');
+  const newTaskRef = push(taskRef);
+  await set(newTaskRef, task);
+};
+
+// Função para atualizar uma tarefa existente
+export const updateTask = async (id: string, task: any) => {
+  const taskRef = ref(db, `tasks/${id}`);
+  await update(taskRef, task);
+};
+
+// Função para deletar uma tarefa
+export const deleteTask = async (id: string) => {
+  const taskRef = ref(db, `tasks/${id}`);
+  await remove(taskRef);
+};
+
+// Função para buscar todas as tarefas
+export const fetchTasks = async () => {
+  const taskRef = ref(db, 'tasks');
+  const snapshot = await get(taskRef);
+  if (snapshot.exists()) {
+    const data = snapshot.val();
+    return Object.entries(data).map(([id, task]) => ({ id, ...task }));
+  }
+  return [];
+}
