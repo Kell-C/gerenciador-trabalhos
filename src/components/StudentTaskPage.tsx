@@ -1,5 +1,4 @@
-// src/components/StudentTaskPage.tsx
-import React, { useState, useEffect, ChangeEvent } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { ref, onValue } from 'firebase/database';
 import { db } from '../firebase';
@@ -12,10 +11,9 @@ interface Task {
   dueDate: string;
   instructions: string;
   criteria: string;
-  themes: { title: string; description: string }[];
-  maxGroupSize: number;
-  materials?: File[];
-  todoList?: string[];
+  themes: { title: string; description: string; available: boolean }[];
+  materials: File[];
+  todoList: string[];
 }
 
 interface Group {
@@ -25,13 +23,19 @@ interface Group {
   theme: string;
 }
 
+interface Theme {
+    title: string;
+    description: string
+}
+
+
 const StudentTaskPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const [task, setTask] = useState<Task | null>(null);
   const [groups, setGroups] = useState<Group[]>([]);
   const [groupName, setGroupName] = useState('');
-  const [selectedTheme, setSelectedTheme] = useState('');
   const [groupMembers, setGroupMembers] = useState<string[]>(['']);
+  const [selectedThemeIndex, setSelectedThemeIndex] = useState<number | null>(null);
 
   useEffect(() => {
     if (id) {
@@ -39,6 +43,9 @@ const StudentTaskPage: React.FC = () => {
       onValue(taskRef, (snapshot) => {
         const taskData = snapshot.val();
         if (taskData) {
+          // Verifica se taskData.themes é um array, caso contrário, define um array vazio
+          const themes = Array.isArray(taskData.themes) ? taskData.themes : [];
+
           setTask({
             id,
             title: taskData.title || '',
@@ -46,20 +53,19 @@ const StudentTaskPage: React.FC = () => {
             dueDate: taskData.dueDate || '',
             instructions: taskData.instructions || '',
             criteria: taskData.criteria || '',
-            themes: taskData.themes || [],
-            maxGroupSize: taskData.maxGroupSize || 0,
+            themes: themes.map((theme: Theme) => ({
+              ...theme,
+              available: !groups.some((group) => group.theme === theme.title),
+            })),
+            
             materials: taskData.materials || [],
             todoList: taskData.todoList || [],
           });
         }
       });
-
-      // Carrega os grupos da tarefa
-      loadGroups();
     }
-  }, [id]);
+  }, [id, groups]); // Certifique-se de que `groups` está correto na lista de dependências
 
-  // Função para carregar os grupos da tarefa
   const loadGroups = async () => {
     if (id) {
       const loadedGroups = await getGroupsFromTask(id);
@@ -67,13 +73,9 @@ const StudentTaskPage: React.FC = () => {
     }
   };
 
-  const handleAddMember = () => {
-    if (groupMembers.length < (task?.maxGroupSize || 1)) {
-      setGroupMembers([...groupMembers, '']);
-    } else {
-      alert(`O grupo não pode ter mais que ${task?.maxGroupSize} membros.`);
-    }
-  };
+  useEffect(() => {
+    loadGroups();
+  }, [id]); // Chama a função para carregar grupos apenas quando `id` muda
 
   const handleRegisterGroup = async () => {
     if (!groupName.trim() || groupMembers.some((member) => !member.trim())) {
@@ -81,76 +83,162 @@ const StudentTaskPage: React.FC = () => {
       return;
     }
 
-    if (!selectedTheme) {
+    if (selectedThemeIndex === null) {
       alert('Selecione um tema para o grupo.');
       return;
     }
 
+    const selectedTheme = task!.themes[selectedThemeIndex];
+
     const groupData = {
       name: groupName,
       members: groupMembers,
-      theme: selectedTheme,
+      theme: selectedTheme.title,
     };
 
     try {
       await addGroupToTask(task!.id, groupData);
       alert('Grupo registrado com sucesso!');
       setGroups([...groups, { id: Date.now().toString(), ...groupData }]);
-      // Limpa os campos do grupo
+
+      // Atualiza a disponibilidade do tema
+      const updatedThemes = [...task!.themes];
+      updatedThemes[selectedThemeIndex].available = false;
+      setTask({ ...task!, themes: updatedThemes });
+
       setGroupName('');
       setGroupMembers(['']);
-      setSelectedTheme('');
+      setSelectedThemeIndex(null);
     } catch (error) {
       console.error('Erro ao registrar o grupo:', error);
     }
   };
 
   return (
-    <div className="container mx-auto px-4 py-6">
-      <h2 className="text-3xl font-bold text-center text-[#2E7D32] mb-4">Detalhes da Tarefa</h2>
+    <div className="container mx-auto px-4 py-8 max-w-full">
+      <h2 className="text-4xl font-bold text-center text-[#2E7D32] mb-6">Detalhes da Tarefa</h2>
       {task ? (
-        <div className="bg-white shadow-md rounded-lg p-6">
-          <h3 className="text-2xl font-semibold text-[#2E7D32]">{task.title}</h3>
-          <p><strong>Descrição:</strong> {task.description}</p>
-          <p><strong>Data de Entrega:</strong> {task.dueDate}</p>
-          <p><strong>Instruções:</strong> {task.instructions}</p>
-          <p><strong>Critérios:</strong> {task.criteria}</p>
-          <div>
-            <strong>Materiais:</strong>
-            {task.materials?.length > 0 ? (
-              <ul className="list-disc ml-5">
-                {task.materials.map((material, index) => (
-                  <li key={index}>{material.name || `Material ${index + 1}`}</li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-gray-600">Nenhum material anexado.</p>
-            )}
+        <div className="bg-white shadow-lg rounded-lg p-8 space-y-6">
+          {/* Detalhes da Tarefa */}
+          <div className="border-b pb-4 mb-4">
+            <h3 className="text-3xl font-semibold text-[#2E7D32]">{task.title}</h3>
+            <p className="text-gray-700 mt-2"><strong>Descrição:</strong> {task.description}</p>
+            <p className="text-gray-700 mt-2"><strong>Data de Entrega:</strong> {task.dueDate}</p>
           </div>
-          <div className="mb-4">
-            <strong>To-Do List:</strong>
-            {task.todoList?.length > 0 ? (
-              <ul className="list-disc ml-5">
-                {task.todoList.map((item, index) => (
-                  <li key={index}>{item}</li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-gray-600">Nenhum item na lista.</p>
-            )}
-          </div>
-          <p><strong>Temas Disponíveis:</strong></p>
-          <ul className="list-disc ml-5">
-            {task.themes.map((theme, index) => (
-              <li key={index}>{theme.title}: {theme.description}</li>
-            ))}
-          </ul>
 
-          {/* Exibição dos grupos já cadastrados */}
-          <div className="mt-4">
-            <h4 className="text-lg font-semibold">Grupos Cadastrados:</h4>
+          {/* Sessões de Instruções, Critérios, Materiais e To-Do List */}
+          <div className="grid gap-6 lg:grid-cols-2">
+            <div className="bg-gray-50 p-6 rounded-md shadow-sm">
+              <h4 className="text-xl font-semibold text-[#2E7D32]">Instruções</h4>
+              <p className="text-gray-700 mt-2">{task.instructions}</p>
+            </div>
+            <div className="bg-gray-50 p-6 rounded-md shadow-sm">
+              <h4 className="text-xl font-semibold text-[#2E7D32]">Critérios</h4>
+              <p className="text-gray-700 mt-2">{task.criteria}</p>
+            </div>
+          </div>
+
+          {/* Sessões de Materiais e To-Do List */}
+          <div className="grid gap-6 lg:grid-cols-2">
+            <div className="bg-gray-50 p-6 rounded-md shadow-sm">
+              <h4 className="text-xl font-semibold text-[#2E7D32]">Materiais</h4>
+              {task.materials?.length > 0 ? (
+                <ul className="list-disc ml-5 text-gray-700 mt-2">
+                  {task.materials?.map((material, index) => (
+                    <li key={index}>{material.name || `Material ${index + 1}`}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-gray-600">Nenhum material anexado.</p>
+              )}
+            </div>
+
+            <div className="bg-gray-50 p-6 rounded-md shadow-sm">
+              <h4 className="text-xl font-semibold text-[#2E7D32]">To-Do List</h4>
+              {task.todoList?.length > 0 ? (
+                <ul className="list-disc ml-5 text-gray-700 mt-2">
+                  {task.todoList.map((item, index) => (
+                    <li key={index}>{item}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-gray-600">Nenhum item na lista.</p>
+              )}
+            </div>
+          </div>
+
+          {/* Seção de Temas com Criação de Grupos */}
+          <div className="bg-gray-50 p-6 rounded-md shadow-sm">
+            <h4 className="text-xl font-semibold text-[#2E7D32] mb-4">Temas Disponíveis</h4>
+            {task.themes.length > 0 ? (
+              <div className="grid gap-4 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+                {task.themes.map((theme, index) => (
+                  <div
+                    key={index}
+                    className={`p-4 bg-white rounded-lg shadow hover:shadow-md transition-shadow border border-gray-200 ${!theme.available ? 'opacity-50' : ''
+                      }`}
+                  >
+                    <h5 className="text-lg font-semibold text-[#2E7D32] mb-2">
+                      {theme.title}
+                    </h5>
+                    <p className="text-gray-700">{theme.description}</p>
+                    {theme.available && (
+                      <div className="mt-4">
+                        {selectedThemeIndex === index && (
+                          <>
+                            <input
+                              type="text"
+                              placeholder="Nome do Grupo"
+                              value={groupName}
+                              onChange={(e) => setGroupName(e.target.value)}
+                              className="w-full p-2 border rounded mt-2"
+                            />
+                            {groupMembers.map((member, idx) => (
+                              <input
+                                key={idx}
+                                type="text"
+                                placeholder={`Membro ${idx + 1}`}
+                                value={member}
+                                onChange={(e) => {
+                                  const updatedMembers = [...groupMembers];
+                                  updatedMembers[idx] = e.target.value;
+                                  setGroupMembers(updatedMembers);
+                                }}
+                                className="w-full p-2 border rounded mt-2"
+                              />
+                            ))}
+                            
+                            <button
+                              onClick={handleRegisterGroup}
+                              className="bg-green-500 text-white py-2 px-4 rounded hover:bg-green-600 mt-4"
+                            >
+                              Registrar Grupo
+                            </button>
+                          </>
+                        )}
+                        {selectedThemeIndex !== index && (
+                          <button
+                            onClick={() => setSelectedThemeIndex(index)}
+                            className="mt-2 bg-blue-500 text-white py-1 px-4 rounded hover:bg-blue-600 transition-transform duration-200 transform hover:scale-105"
+                          >
+                            Criar Grupo
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-gray-600">Nenhum tema disponível.</p>
+            )}
+          </div>
+
+          {/* Seção de Grupos Cadastrados */}
+          <div className="bg-gray-50 p-6 rounded-md shadow-sm">
+            <h4 className="text-xl font-semibold text-[#2E7D32]">Grupos Cadastrados</h4>
             {groups.length > 0 ? (
-              <ul className="list-disc ml-5">
+              <ul className="list-disc ml-5 text-gray-700 mt-2">
                 {groups.map((group, index) => (
                   <li key={index}>
                     <strong>{group.name}</strong> - Integrantes: {group.members.join(', ')}
@@ -160,58 +248,6 @@ const StudentTaskPage: React.FC = () => {
             ) : (
               <p className="text-gray-600">Nenhum grupo cadastrado.</p>
             )}
-          </div>
-
-          {/* Formulário para cadastrar grupo */}
-          <div className="mt-6">
-            <h4 className="text-lg font-semibold">Cadastrar Grupo:</h4>
-            <input
-              type="text"
-              placeholder="Nome do Grupo"
-              value={groupName}
-              onChange={(e) => setGroupName(e.target.value)}
-              className="w-full p-2 border rounded mt-2"
-            />
-            {groupMembers.map((member, index) => (
-              <input
-                key={index}
-                type="text"
-                placeholder={`Membro ${index + 1}`}
-                value={member}
-                onChange={(e) => {
-                  const updatedMembers = [...groupMembers];
-                  updatedMembers[index] = e.target.value;
-                  setGroupMembers(updatedMembers);
-                }}
-                className="w-full p-2 border rounded mt-2"
-              />
-            ))}
-            {groupMembers.length < (task.maxGroupSize || 0) && (
-              <button
-                onClick={handleAddMember}
-                className="bg-blue-500 text-white py-1 px-3 rounded hover:bg-blue-600 mt-2"
-              >
-                Adicionar Membro
-              </button>
-            )}
-            <select
-              value={selectedTheme}
-              onChange={(e) => setSelectedTheme(e.target.value)}
-              className="w-full p-2 border rounded mt-2"
-            >
-              <option value="">Selecione um Tema</option>
-              {task.themes.map((theme, index) => (
-                <option key={index} value={theme.title}>
-                  {theme.title}
-                </option>
-              ))}
-            </select>
-            <button
-              onClick={handleRegisterGroup}
-              className="bg-green-500 text-white py-2 px-4 rounded hover:bg-green-600 mt-4"
-            >
-              Registrar Grupo
-            </button>
           </div>
         </div>
       ) : (

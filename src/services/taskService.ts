@@ -2,6 +2,15 @@
 import { ref, set, update, push, remove, onValue, get } from 'firebase/database';
 import { db } from '../firebase';
 
+interface Theme {
+  title: string;
+  description: string;
+}
+
+interface Group {
+  name: string;
+  members: string[];
+}
 // Definindo o tipo da tarefa
 interface Task {
   id?: string;
@@ -12,6 +21,9 @@ interface Task {
   criteria: string;
   materials?: File[];
   todolist?: string[];
+  themes: Theme[];
+  groups: Group[];
+  
 }
 
 // Função para criar uma nova tarefa
@@ -39,7 +51,9 @@ export const fetchTasks = async () => {
   const snapshot = await get(taskRef);
   if (snapshot.exists()) {
     const data = snapshot.val();
-    return Object.entries(data).map(([id, task]) => ({ id, ...task }));
+    return Object.entries(data).map(([id, task]) => ({  id,
+  ...Object.assign({}, task), // Isso garante que task seja tratado como um objeto
+}));
   }
   return [];
 }

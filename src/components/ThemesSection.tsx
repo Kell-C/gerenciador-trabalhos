@@ -20,26 +20,32 @@ const ThemesSection: React.FC<ThemesSectionProps> = ({ themes, taskId }) => {
   };
 
   return (
-    <div className="mt-6">
-      <h4 className="font-semibold text-lg text-[#2E7D32] mb-2">Temas Disponíveis:</h4>
-      {themes.length > 0 ? (
-        <ul className="list-disc ml-5 text-gray-700">
-          {themes.map((theme, index) => (
-            <li key={index}>
-              <strong>{theme.title}:</strong> {theme.description}
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p className="text-gray-700">Nenhum tema disponível.</p>
-      )}
-      <button
-        onClick={handleEditThemes}
-        className="mt-4 bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 transition-transform duration-200 transform hover:scale-105"
-      >
-        Editar Temas
-      </button>
+    <div className="bg-gray-50 p-6 rounded-md shadow-sm">
+  <h4 className="text-xl font-semibold text-[#2E7D32] mb-4">Temas Disponíveis</h4>
+  {themes.length > 0 ? (
+    <div className="grid gap-4 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+      {themes.map((theme, index) => (
+        <div
+          key={index}
+          className="p-4 bg-white rounded-lg shadow hover:shadow-md transition-shadow border border-gray-200"
+        >
+          <h5 className="text-lg font-semibold text-[#2E7D32] mb-2">
+            {theme.title}
+          </h5>
+          <p className="text-gray-700">{theme.description}</p>
+        </div>
+      ))}
     </div>
+  ) : (
+    <p className="text-gray-600">Nenhum tema disponível.</p>
+  )}
+  <button
+    onClick={handleEditThemes}
+    className="mt-4 bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 transition-transform duration-200 transform hover:scale-105"
+  >
+    Editar Temas
+  </button>
+</div>
   );
 };
 

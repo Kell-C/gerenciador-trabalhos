@@ -11,6 +11,11 @@ interface TaskFormProps {
     dueDate: string;
     instructions: string;
     criteria: string;
+    materials: [],
+    todolist: [],
+    themes: [],
+    groups: [],
+
   };
 }
 
@@ -21,6 +26,10 @@ const TaskForm: React.FC<TaskFormProps> = ({ onCreate, taskData }) => {
     dueDate: '',
     instructions: '',
     criteria: '',
+    materials: [],
+    todolist: [],
+    themes: [],
+    groups: [],
   });
 
   const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {

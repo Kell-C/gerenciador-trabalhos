@@ -1,6 +1,6 @@
 // src/services/groupService.ts
 import { db } from '../firebase';
-import { ref, set, get, push, child, update } from 'firebase/database';
+import { ref, set, get, push, update } from 'firebase/database';
 
 // Adiciona um grupo à tarefa especificada
 export const addGroupToTask = async (taskId: string, group: { name: string; members: string[] }) => {

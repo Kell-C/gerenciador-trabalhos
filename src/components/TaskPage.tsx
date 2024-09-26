@@ -4,7 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ref, onValue } from 'firebase/database';
 import { db } from '../firebase';
 import { updateTask, deleteTask } from '../services/taskService';
-import { getGroupsFromTask, addGroupToTask } from '../services/groupService';
+import { getGroupsFromTask } from '../services/groupService';
 import ThemesSection from './ThemesSection';
 
 interface Theme {
@@ -25,7 +25,7 @@ interface Task {
   instructions: string;
   criteria: string;
   materials: File[];
-  todoList: string[];
+  todolist: string[];
   themes: Theme[];
   groups: Group[];
 }
@@ -53,7 +53,7 @@ const TaskPage: React.FC = () => {
             instructions: taskData.instructions || '',
             criteria: taskData.criteria || '',
             materials: taskData.materials || [],
-            todoList: taskData.todoList || [],
+            todolist: taskData.todolist || [],
             themes: taskData.themes || [],
             groups: taskData.groups || [],
           });
@@ -98,7 +98,7 @@ const TaskPage: React.FC = () => {
       await updateTask(task.id, {
         ...task,
         materials: updatedMaterials,
-        todoList: task.todoList || [],
+        todolist: task.todolist || [],
         themes: task.themes || [],
         groups: groups || [],
       });
@@ -109,94 +109,116 @@ const TaskPage: React.FC = () => {
 
   const handleAddTodoItem = () => {
     if (newTodoItem.trim()) {
-      setTask((prev) => prev && { ...prev, todoList: [...prev.todoList, newTodoItem] });
+      setTask((prev) => prev && { ...prev, todolist: [...prev.todolist, newTodoItem] });
       setNewTodoItem('');
     }
   };
 
   const handleRemoveTodoItem = (index: number) => {
-    setTask((prev) => prev && { ...prev, todoList: prev.todoList.filter((_, i) => i !== index) });
+    setTask((prev) => prev && { ...prev, todolist: prev.todolist.filter((_, i) => i !== index) });
   };
 
   const handleTodoItemChange = (index: number, value: string) => {
     setTask((prev) =>
       prev && {
         ...prev,
-        todoList: prev.todoList.map((item, i) => (i === index ? value : item)),
+        todolist: prev.todolist.map((item, i) => (i === index ? value : item)),
       }
     );
   };
 
   return (
-    <div className="container mx-auto px-4 py-6">
-      <h2 className="text-3xl font-bold text-center text-[#2E7D32] mb-4">Detalhes da Tarefa</h2>
+    <div className="container mx-auto px-4 py-8 max-w-full">
+      <h2 className="text-4xl font-bold text-center text-[#2E7D32] mb-6">Detalhes da Tarefa</h2>
       {task ? (
-        <div className="bg-white shadow-md rounded-lg p-6">
-          {!editing ? (
-            <>
-              <h3 className="text-2xl font-semibold text-[#2E7D32] mb-2">{task.title}</h3>
-              <div className="mb-4">
-                <p className="mb-1"><strong>Descrição:</strong> {task.description}</p>
-                <p className="mb-1"><strong>Data de Entrega:</strong> {task.dueDate}</p>
-                <p className="mb-1"><strong>Instruções:</strong> {task.instructions}</p>
-                <p className="mb-1"><strong>Critérios:</strong> {task.criteria}</p>
-              </div>
-              <div className="mb-4">
-                <strong>Materiais:</strong>
-                {task.materials.length > 0 ? (
-                  <ul className="list-disc ml-5">
-                    {task.materials.map((material, index) => (
-                      <li key={index}>{material.name || `Material ${index + 1}`}</li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="text-gray-600">Nenhum material anexado.</p>
-                )}
-              </div>
-              <div className="mb-4">
-                <strong>To-Do List:</strong>
-                <ul className="list-disc ml-5">
-                  {task.todoList.map((item, index) => (
+        <div className="bg-white shadow-lg rounded-lg p-8 space-y-6">
+          <div className="border-b pb-4 mb-4">
+            <h3 className="text-3xl font-semibold text-[#2E7D32]">{task.title}</h3>
+            <p className="text-gray-700 mt-2"><strong>Descrição:</strong> {task.description}</p>
+            <p className="text-gray-700 mt-2"><strong>Data de Entrega:</strong> {task.dueDate}</p>
+          </div>
+
+          <div className="grid gap-6 lg:grid-cols-2">
+            <div className="bg-gray-50 p-6 rounded-md shadow-sm">
+              <h4 className="text-xl font-semibold text-[#2E7D32]">Instruções</h4>
+              <p className="text-gray-700 mt-2">{task.instructions}</p>
+            </div>
+            <div className="bg-gray-50 p-6 rounded-md shadow-sm">
+              <h4 className="text-xl font-semibold text-[#2E7D32]">Critérios</h4>
+              <p className="text-gray-700 mt-2">{task.criteria}</p>
+            </div>
+          </div>
+
+          <div className="grid gap-6 lg:grid-cols-2">
+            <div className="bg-gray-50 p-6 rounded-md shadow-sm">
+              <h4 className="text-xl font-semibold text-[#2E7D32]">Materiais</h4>
+              {task.materials?.length > 0 ? (
+                <ul className="list-disc ml-5 text-gray-700 mt-2">
+                  {task.materials.map((material, index) => (
+                    <li key={index}>{material.name || `Material ${index + 1}`}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-gray-600">Nenhum material anexado.</p>
+              )}
+            </div>
+
+            <div className="bg-gray-50 p-6 rounded-md shadow-sm">
+              <h4 className="text-xl font-semibold text-[#2E7D32]">To-Do List</h4>
+              {task.todolist?.length > 0 ? (
+                <ul className="list-disc ml-5 text-gray-700 mt-2">
+                  {task.todolist.map((item, index) => (
                     <li key={index}>{item}</li>
                   ))}
                 </ul>
-              </div>
+              ) : (
+                <p className="text-gray-600">Nenhum item na lista.</p>
+              )}
+            </div>
+          </div>
 
-              {/* Seção de Temas */}
-              <ThemesSection themes={task.themes} taskId={task.id} />
+          <ThemesSection themes={task.themes} taskId={task.id} />
 
-              {/* Seção de Grupos */}
-              <div className="mb-4">
-                <strong>Grupos:</strong>
-                {groups.length > 0 ? (
-                  <ul className="list-disc ml-5">
-                    {groups.map((group, index) => (
-                      <li key={index}>
-                        <strong>{group.name}</strong> - Integrantes: {group.members.join(', ')}
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="text-gray-600">Nenhum grupo cadastrado.</p>
-                )}
+                    {/* Seção de Grupos */}
+          <div className="bg-gray-50 p-6 rounded-md shadow-sm">
+            <h4 className="text-xl font-semibold text-[#2E7D32] mb-4">Grupos Cadastrados</h4>
+            {groups.length > 0 ? (
+              <div className="grid gap-4 lg:grid-cols-2">
+                {groups.map((group, index) => (
+                  <div
+                    key={index}
+                    className="p-4 bg-white rounded-lg shadow hover:shadow-md transition-shadow"
+                  >
+                    <h5 className="text-lg font-semibold text-[#2E7D32] mb-2">
+                      {group.name || `Grupo ${index + 1}`}
+                    </h5>
+                    <p className="text-gray-700">
+                      <strong>Integrantes:</strong> {group.members.join(', ')}
+                    </p>
+                  </div>
+                ))}
               </div>
+            ) : (
+              <p className="text-gray-600">Nenhum grupo cadastrado.</p>
+            )}
+          </div>
 
-              <div className="mt-4 flex space-x-2">
-                <button
-                  onClick={handleEdit}
-                  className="bg-green-500 text-white py-2 px-4 rounded hover:bg-green-600 transition-colors duration-300"
-                >
-                  Editar
-                </button>
-                <button
-                  onClick={handleDelete}
-                  className="bg-red-500 text-white py-2 px-4 rounded hover:bg-red-600 transition-colors duration-300"
-                >
-                  Excluir
-                </button>
-              </div>
-            </>
-          ) : (
+          <div className="mt-4 flex space-x-2">
+            <button
+              onClick={handleEdit}
+              className="bg-green-500 text-white py-2 px-4 rounded hover:bg-green-600 transition-colors duration-300"
+            >
+              Editar
+            </button>
+            <button
+              onClick={handleDelete}
+              className="bg-red-500 text-white py-2 px-4 rounded hover:bg-red-600 transition-colors duration-300"
+            >
+              Excluir
+            </button>
+          </div>
+
+          {editing && (
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* Campos de edição */}
               <div>
@@ -265,7 +287,7 @@ const TaskPage: React.FC = () => {
               <div>
                 <label className="block text-sm font-medium text-gray-700">To-Do List</label>
                 <ul className="list-disc ml-5">
-                  {task.todoList.map((item, index) => (
+                  {task.todolist.map((item, index) => (
                     <li key={index} className="flex items-center space-x-2">
                       <input
                         type="text"

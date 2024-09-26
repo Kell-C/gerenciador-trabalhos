@@ -8,6 +8,10 @@ interface Task {
   title: string;
   description: string;
   dueDate: string;
+  criteria: string,
+  materials: [],
+  todoList: [],
+  
 }
 
 const StudentDashboard: React.FC = () => {
@@ -17,11 +21,25 @@ const StudentDashboard: React.FC = () => {
     const loadTasks = async () => {
       try {
         const fetchedTasks = await fetchTasks();
-        setTasks(fetchedTasks);
-      } catch (error) {
+           // Mapeie as tarefas recebidas para garantir que tenham todos os campos necessários da interface Task
+      const completeTasks: Task[] = fetchedTasks.map((task: any) => ({
+        id: task.id,
+        title: task.title || '', // Adicione valores padrão para garantir que todos os campos estejam presentes
+        description: task.description || '',
+        dueDate: task.dueDate || '',
+        instructions: task.instructions || '',
+        criteria: task.criteria || '',
+        materials: task.materials || [],
+        todoList: task.todolist || [], // Ajuste o campo para 'todolist'
+      }));
+      setTasks(completeTasks);
+    } catch (error) {
         console.error('Erro ao carregar as tarefas:', error);
       }
     };
+
+ 
+
 
     loadTasks();
   }, []);
